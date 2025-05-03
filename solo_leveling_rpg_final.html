@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solo Leveling : RPG Fitness</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #e1e1e1;
+        }
+
+        header {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        header nav button {
+            margin: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            background: #2e2e44;
+            color: white;
+            cursor: pointer;
+        }
+
+        header nav button:hover {
+            background: #39395d;
+        }
+
+        .tab {
+            display: none;
+            padding: 1rem;
+        }
+
+        .tab.active {
+            display: block;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        ul li {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: #2e2e44;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        ul li span {
+            color: #ffffff;
+        }
+
+        ul li button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        ul li button:hover {
+            background: #0056b3;
+        }
+
+        .disabled {
+            color: gray;
+            pointer-events: none;
+        }
+
+        .event-pending {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Solo Leveling : RPG Fitness</h1>
+        <nav id="tabs">
+            <button onclick="showTab('creation')" id="creationTab">Création</button>
+            <button onclick="showTab('profile')">Profil</button>
+            <button onclick="showTab('daily-quests')">Quêtes quotidiennes</button>
+            <button onclick="showTab('custom-quests')">Quêtes personnalisées</button>
+            <button onclick="showTab('skills')">Compétences</button>
+            <button onclick="showTab('settings')">Paramètres</button>
+        </nav>
+    </header>
+    <main>
+        <!-- Création -->
+        <section id="creation" class="tab active">
+            <h2>Création de compte</h2>
+            <form id="creationForm">
+                <label for="playerName">Nom du joueur :</label>
+                <input type="text" id="playerName" placeholder="Entrez votre nom" required>
+                <button type="submit">Créer</button>
+            </form>
+        </section>
+
+        <!-- Profil -->
+        <section id="profile" class="tab">
+            <h2>Profil</h2>
+            <div id="characterDetails"></div>
+            <button onclick="claimDailyReward()">Réclamer la récompense quotidienne</button>
+        </section>
+
+        <!-- Quêtes quotidiennes -->
+        <section id="daily-quests" class="tab">
+            <h2>Quêtes quotidiennes</h2>
+            <p id="weekendNotice" style="color: red; display: none;">Les quêtes quotidiennes sont désactivées le week-end pour éviter les blessures.</p>
+            <ul id="dailyQuests">
+                <li>Faire 10 pompes <button onclick="completeQuest('Faire 10 pompes', 30)">Compléter</button></li>
+                <li>Faire 10 abdos <button onclick="completeQuest('Faire 10 abdos', 30)">Compléter</button></li>
+                <li>Courir 1 km <button onclick="completeQuest('Courir 1 km', 30)">Compléter</button></li>
+            </ul>
+        </section>
+
+        <!-- Quêtes personnalisées -->
+        <section id="custom-quests" class="tab">
+            <h2>Quêtes personnalisées</h2>
+            <form id="customQuestForm">
+                <input type="text" id="customQuestName" placeholder="Nom de la quête" required>
+                <select id="customQuestDifficulty" required>
+                    <option value="facile">Facile (+10 XP)</option>
+                    <option value="moyen">Moyen (+20 XP)</option>
+                    <option value="difficile">Difficile (+30 XP)</option>
+                </select>
+                <button type="submit">Créer</button>
+            </form>
+            <ul id="customQuests"></ul>
+        </section>
+
+        <!-- Compétences -->
+        <section id="skills" class="tab">
+            <h2>Compétences</h2>
+            <p>Attribuez vos points dans les différentes compétences :</p>
+            <ul id="skillsList">
+                <li>Force : <span id="forceStat">0</span> <button onclick="increaseSkill('Force')">+</button></li>
+                <li>Agilité : <span id="agilityStat">0</span> <button onclick="increaseSkill('Agilité')">+</button></li>
+                <li>Intelligence : <span id="intelligenceStat">0</span> <button onclick="increaseSkill('Intelligence')">+</button></li>
+                <li>Vitalité : <span id="vitalityStat">0</span> <button onclick="increaseSkill('Vitalité')">+</button></li>
+            </ul>
+            <h3>Événements déclenchés</h3>
+            <ul id="eventsList"></ul>
+        </section>
+
+        <!-- Paramètres -->
+        <section id="settings" class="tab">
+            <h2>Paramètres</h2>
+            <button onclick="resetProgress()">Réinitialiser la progression</button>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 Solo Leveling RPG</p>
+    </footer>
+    <script>
+        let player = JSON.parse(localStorage.getItem('player')) || {
+            name: null,
+            xp: 0,
+            level: 1,
+            skillPoints: 1,
+            stats: { Force: 0, Agilité: 0, Intelligence: 0, Vitalité: 0 },
+            events: [],
+            completedQuests: {},
+            customQuests: [],
+            gold: 100,
+            dailyRewardClaimed: false
+        };
+
+        function savePlayer() {
+            localStorage.setItem('player', JSON.stringify(player));
+        }
+
+        function updateProfile() {
+            document.getElementById('characterDetails').innerHTML = `
+                <h3>${player.name}</h3>
+                <p>Niveau : ${player.level}</p>
+                <p>XP : ${player.xp}/100</p>
+                <p>Or : ${player.gold}</p>
+                <p>Points de compétence : ${player.skillPoints}</p>
+            `;
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        document.getElementById('creationForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('playerName').value;
+            if (name.trim()) {
+                player.name = name;
+                savePlayer();
+                alert(`Bienvenue, ${name} !`);
+                document.getElementById('creationTab').remove();
+                showTab('profile');
+                updateProfile();
+            } else {
+                alert("Veuillez entrer un nom valide.");
+            }
+        });
+
+        function claimDailyReward() {
+            const today = new Date().toDateString();
+            if (player.dailyRewardClaimed === today) {
+                alert("Vous avez déjà réclamé votre récompense quotidienne !");
+                return;
+            }
+            player.gold += 200;
+            player.dailyRewardClaimed = today;
+            savePlayer();
+            updateProfile();
+            alert("Vous avez reçu 200 pièces d'or !");
+        }
+
+        function completeQuest(name, xp) {
+            const today = new Date().toDateString();
+            if (player.completedQuests[name] === today) {
+                alert(`Vous avez déjà complété "${name}" aujourd'hui !`);
+                return;
+            }
+
+            player.xp += xp;
+            player.completedQuests[name] = today;
+
+            if (player.xp >= 100) {
+                player.level++;
+                player.skillPoints++;
+                player.xp %= 100;
+                alert(`Niveau supérieur ! Vous êtes maintenant niveau ${player.level}.`);
+            }
+
+            savePlayer();
+            updateProfile();
+            alert(`Quête "${name}" complétée ! Vous avez gagné ${xp} XP.`);
+        }
+
+        document.getElementById('customQuestForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('customQuestName').value.trim();
+            const difficulty = document.getElementById('customQuestDifficulty').value;
+
+            let xp = 0;
+
+            // Définit l'XP en fonction de la difficulté
+            switch (difficulty) {
+                case 'facile':
+                    xp = 10;
+                    break;
+                case 'moyen':
+                    xp = 20;
+                    break;
+                case 'difficile':
+                    xp = 30;
+                    break;
+                default:
+                    alert("Difficulté invalide !");
+                    return;
+            }
+
+            const quest = { name, xp, completed: false };
+            player.customQuests.push(quest);
+            savePlayer();
+
+            addCustomQuestToUI(quest);
+            document.getElementById('customQuestForm').reset();
+        });
+
+        function addCustomQuestToUI(quest) {
+            const ul = document.getElementById('customQuests');
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>${quest.name} (+${quest.xp} XP)</span>
+                <button onclick="completeCustomQuest('${quest.name}')">Compléter</button>
+            `;
+            ul.appendChild(li);
+        }
+
+        function completeCustomQuest(name) {
+            const quest = player.customQuests.find(q => q.name === name);
+            if (!quest || quest.completed) {
+                alert("Cette quête est déjà complétée ou introuvable.");
+                return;
+            }
+
+            quest.completed = true;
+            player.xp += quest.xp;
+
+            if (player.xp >= 100) {
+                player.level++;
+                player.skillPoints++;
+                player.xp %= 100;
+                alert(`Niveau supérieur ! Vous êtes maintenant niveau ${player.level}.`);
+            }
+
+            savePlayer();
+            updateProfile();
+            alert(`Quête "${name}" complétée ! Vous avez gagné ${quest.xp} XP.`);
+        }
+
+        function resetProgress() {
+            if (confirm("Êtes-vous sûr de vouloir réinitialiser votre progression ? Cette action est irréversible.")) {
+                localStorage.removeItem('player');
+                location.reload();
+            }
+        }
+
+        function restoreCustomQuests() {
+            const ul = document.getElementById('customQuests');
+            ul.innerHTML = '';
+            player.customQuests.forEach(addCustomQuestToUI);
+        }
+
+        function increaseSkill(skill) {
+            if (player.skillPoints > 0) {
+                player.stats[skill]++;
+                player.skillPoints--;
+
+                let description = "";
+                if (skill === "Force") description = "Faire 10 pompes";
+                else if (skill === "Agilité") description = "Courir 1 km";
+                else if (skill === "Intelligence") description = "Étudier 1 heure";
+                else if (skill === "Vitalité") description = "Dormir 1 heure";
+
+                player.events.push({ description });
+                savePlayer();
+                updateProfile();
+                updateEventsUI();
+            } else {
+                alert("Pas assez de points de compétence !");
+            }
+        }
+
+        function updateEventsUI() {
+            const eventsList = document.getElementById('eventsList');
+            eventsList.innerHTML = '';
+            player.events.forEach((event, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="event-pending">${event.description}</span>
+                    <input type="checkbox" onclick="completeEvent(${index})">
+                `;
+                eventsList.appendChild(li);
+            });
+        }
+
+        function completeEvent(index) {
+            player.events.splice(index, 1); // Supprime l'événement complété
+            savePlayer();
+            updateEventsUI();
+        }
+
+        if (player.name) {
+            updateProfile();
+            restoreCustomQuests();
+        } else {
+            showTab('creation');
+        }
+    </script>
+</body>
+</html>
