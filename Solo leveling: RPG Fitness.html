@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solo Leveling : RPG Fitness</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e1e1e1;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        header nav button {
+            margin: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            background: #2e2e44;
+            color: white;
+            cursor: pointer;
+        }
+
+        header nav button:hover {
+            background: #39395d;
+        }
+
+        .tab {
+            display: none;
+            padding: 1rem;
+        }
+
+        .tab.active {
+            display: block;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        ul li {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: #2e2e44;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        ul li button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        ul li button:hover {
+            background: #0056b3;
+        }
+
+        .disabled {
+            color: gray;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Solo Leveling : RPG Fitness</h1>
+        <nav id="tabs">
+            <button onclick="showTab('profile')">Profil</button>
+            <button onclick="showTab('daily-quests')">Quêtes quotidiennes</button>
+            <button onclick="showTab('custom-quests')">Quêtes personnalisées</button>
+            <button onclick="showTab('shop')">Shop</button>
+            <button onclick="showTab('settings')">Paramètres</button>
+        </nav>
+    </header>
+    <main>
+        <section id="profile" class="tab">
+            <h2>Profil</h2>
+            <div id="characterDetails"></div>
+        </section>
+
+        <section id="daily-quests" class="tab">
+            <h2>Quêtes quotidiennes</h2>
+            <ul id="dailyQuests">
+                <li>Faire 10 pompes <button ontouchstart="completeQuest('Faire 10 pompes', 30)">Compléter</button></li>
+                <li>Faire 10 abdos <button ontouchstart="completeQuest('Faire 10 abdos', 30)">Compléter</button></li>
+                <li>Courir 1 km <button ontouchstart="completeQuest('Courir 1 km', 30)">Compléter</button></li>
+            </ul>
+        </section>
+
+        <section id="custom-quests" class="tab">
+            <h2>Quêtes personnalisées</h2>
+            <form id="customQuestForm">
+                <input type="text" id="customQuestName" placeholder="Nom de la quête" required>
+                <input type="number" id="customQuestXP" placeholder="XP (max 50)" min="1" max="50" required>
+                <button type="submit">Créer</button>
+            </form>
+            <ul id="customQuests"></ul>
+        </section>
+
+        <section id="shop" class="tab">
+            <h2>Shop</h2>
+            <p>Lootbox gratuite : ouvre-la pour recevoir 200 gold !</p>
+            <button ontouchstart="claimLootbox()">Ouvrir la lootbox</button>
+        </section>
+
+        <section id="settings" class="tab">
+            <h2>Paramètres</h2>
+            <button onclick="resetProgress()">Réinitialiser la progression</button>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 Solo Leveling RPG</p>
+    </footer>
+    <script>
+        let player = JSON.parse(localStorage.getItem('player')) || {
+            name: "Joueur",
+            xp: 0,
+            level: 1,
+            questsCompletedToday: {},
+            customQuests: [],
+            gold: 100,
+            dailyRewardClaimed: false,
+            lootboxClaimedDate: null
+        };
+
+        function savePlayer() {
+            localStorage.setItem('player', JSON.stringify(player));
+        }
+
+        function updateProfile() {
+            document.getElementById('characterDetails').innerHTML = `
+                <h3>${player.name}</h3>
+                <p>Niveau : ${player.level}</p>
+                <p>XP : ${player.xp}/100</p>
+                <p>Or : ${player.gold}</p>
+            `;
+        }
+
+        function completeQuest(name, xp) {
+            const today = new Date().toDateString();
+            if (player.questsCompletedToday[name] === today) {
+                alert(`Vous avez déjà complété "${name}" aujourd'hui. Revenez demain !`);
+                return;
+            }
+
+            player.xp += xp;
+            if (player.xp >= 100) {
+                player.level++;
+                player.xp -= 100;
+                alert(`Vous avez gagné un niveau !`);
+            }
+            player.questsCompletedToday[name] = today;
+            savePlayer();
+            updateProfile();
+            alert(`Quête "${name}" complétée ! Gagné ${xp} XP.`);
+        }
+
+        function claimLootbox() {
+            const today = new Date().toDateString();
+            if (player.lootboxClaimedDate === today) {
+                alert("Vous avez déjà ouvert la lootbox aujourd'hui. Revenez demain !");
+                return;
+            }
+
+            player.gold += 200;
+            player.lootboxClaimedDate = today;
+            savePlayer();
+            updateProfile();
+            alert("Vous avez reçu 200 pièces d'or !");
+        }
+
+        function addCustomQuestToUI(quest) {
+            const ul = document.getElementById('customQuests');
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>${quest.name} (+${quest.xp} XP)</span>
+                <button ontouchstart="completeCustomQuest('${quest.name}')">Compléter</button>
+            `;
+            ul.appendChild(li);
+        }
+
+        function completeCustomQuest(name) {
+            const today = new Date().toDateString();
+            const quest = player.customQuests.find(q => q.name === name);
+
+            if (!quest) {
+                alert("Quête introuvable.");
+                return;
+            }
+
+            if (quest.completed === today) {
+                alert("Cette quête est déjà complétée aujourd'hui !");
+                return;
+            }
+
+            quest.completed = today;
+            player.xp += quest.xp;
+            if (player.xp >= 100) {
+                player.level++;
+                player.xp -= 100;
+                alert(`Vous avez gagné un niveau !`);
+            }
+            savePlayer();
+            updateProfile();
+            alert(`Quête personnalisée "${name}" complétée ! Gagné ${quest.xp} XP.`);
+        }
+
+        document.getElementById('customQuestForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const name = document.getElementById('customQuestName').value.trim();
+            const xp = parseInt(document.getElementById('customQuestXP').value);
+            if (xp > 50) {
+                alert("XP maximale pour une quête personnalisée est 50 !");
+                return;
+            }
+            const quest = { name, xp, completed: null };
+            player.customQuests.push(quest);
+            savePlayer();
+            addCustomQuestToUI(quest);
+            alert(`Quête personnalisée "${name}" ajoutée avec ${xp} XP.`);
+        });
+
+        function resetProgress() {
+            if (confirm("Êtes-vous sûr de vouloir réinitialiser ?")) {
+                localStorage.removeItem('player');
+                location.reload();
+            }
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        window.onload = function() {
+            updateProfile();
+            player.customQuests.forEach(addCustomQuestToUI);
+            showTab('profile');
+        };
+    </script>
+</body>
+</html>
